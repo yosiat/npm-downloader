@@ -10,7 +10,6 @@ const baseDir = "/Users/yosi/code/go/src/github.com/yosiat/npm-downloader"
 const downloadDirectory = "/Volumes/Data/npm"
 
 type PackageStatus struct {
-	Id           string
 	Error        error
 	IsDownloaded bool
 	Package      models.Package
@@ -26,20 +25,16 @@ func packageWorker(repository NpmRepository,
 		// Fetch the package from remote
 		pkg, err := repository.FetchPackage(item.Id)
 		if err != nil {
-			results <- PackageStatus{Id: item.Id, Error: err, IsDownloaded: true, Package: models.Package{Id: item.Id, Revision: item.Revision}}
+			results <- PackageStatus{Error: err, IsDownloaded: true, Package: models.Package{Id: item.Id, Revision: item.Revision}}
 			return
 		}
 
 		downloadedInfo := downloadedPackages[item.Id]
-		pkgCommitStatus := models.PackageCommit{
-			Id:       pkg.Id,
-			Revision: pkg.Revision,
-			Versions: pkg.VersionsKeys(),
-		}
+		pkgCommitStatus := models.CreatePackageCommit(pkg)
 
 		// Check there are changes..
 		if !downloadedInfo.IsChanged(pkgCommitStatus) {
-			results <- PackageStatus{Id: item.Id, Error: nil, IsDownloaded: false, Package: pkg}
+			results <- PackageStatus{Error: nil, IsDownloaded: false, Package: pkg}
 		}
 
 		// We have changes :)
@@ -48,10 +43,10 @@ func packageWorker(repository NpmRepository,
 		downloadErr := pkg.Download(downloadDirectory, versionsToDownload)
 
 		if downloadErr != nil {
-			results <- PackageStatus{Id: item.Id, Error: downloadErr, IsDownloaded: true, Package: pkg}
+			results <- PackageStatus{Error: downloadErr, IsDownloaded: true, Package: pkg}
 			return
 		} else {
-			results <- PackageStatus{Id: item.Id, Error: nil, IsDownloaded: true, Package: pkg}
+			results <- PackageStatus{Error: nil, IsDownloaded: true, Package: pkg}
 		}
 
 	}
@@ -73,7 +68,7 @@ func main() {
 	downloadedPackages := commitsRepo.AllSucessfullPackages()
 
 	workersCount := 64
-	jobsCount := 1 // 0 * 100
+	jobsCount := 50 * 1000
 	results := make(chan PackageStatus, jobsCount)
 	jobs := make(chan models.PackageCommit, jobsCount)
 
@@ -106,17 +101,15 @@ func main() {
 			statusText = "no changes found"
 		}
 
-		fmt.Printf("[%v] %s %s\n", a, status.Id, statusText)
+		fmt.Printf("[%v] %s %s\n", a, status.Package.Id, statusText)
 
 		if status.Error == nil {
-			commitsRepo.Sucess(status.Id, status.Package)
-
+			commitsRepo.Sucess(status.Package)
 		} else {
-			commitsRepo.Error(status.Id, status.Error)
+			commitsRepo.Error(status.Package.Id, status.Error)
 		}
 
-		fmt.Printf("[%v] Commited %s\n", a, status.Id)
-
+		fmt.Printf("[%v] Commited %s\n", a, status.Package.Id)
 	}
 
 	fmt.Println("FINISHED!")

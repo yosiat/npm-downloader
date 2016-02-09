@@ -47,16 +47,11 @@ func CreateCommitsRepository(baseDir string) (CommitsRepository, error) {
 }
 
 // TODO: Return error in Sucess and in Error
-func (repo *CommitsRepository) Sucess(pkgId string, pkg models.Package) {
+func (repo *CommitsRepository) Sucess(pkg models.Package) {
 	repo.Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("Success"))
 
-		packageCommit := models.PackageCommit{
-			Id:       pkgId,
-			Revision: pkg.Revision,
-			Versions: pkg.VersionsKeys(),
-		}
-
+		packageCommit := models.CreatePackageCommit(pkg)
 		var pkgCommitBuffer bytes.Buffer
 		enc := gob.NewEncoder(&pkgCommitBuffer)
 
@@ -65,7 +60,7 @@ func (repo *CommitsRepository) Sucess(pkgId string, pkg models.Package) {
 			return err
 		}
 
-		return b.Put([]byte(pkgId), pkgCommitBuffer.Bytes())
+		return b.Put([]byte(pkg.Id), pkgCommitBuffer.Bytes())
 
 	})
 }

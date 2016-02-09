@@ -28,6 +28,14 @@ func (pkgCommit *PackageCommit) IsChanged(pkg PackageCommit) bool {
 	return false
 }
 
+func CreatePackageCommit(pkg Package) PackageCommit {
+	return PackageCommit{
+		Id:       pkg.Id,
+		Revision: pkg.Revision,
+		Versions: pkg.VersionsKeys(),
+	}
+}
+
 func Take(m map[string]PackageCommit, nth int) map[string]PackageCommit {
 	result := make(map[string]PackageCommit)
 
