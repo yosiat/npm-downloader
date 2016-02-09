@@ -15,8 +15,8 @@ type Changes struct {
 
 		Changes []struct {
 			Revision string `json:"rev"`
-		} `json:changes`
-	} `json:results`
+		} `json:"changes"`
+	} `json:"results"`
 }
 
 func ReadChanges(baseDir string) map[string]models.PackageCommit {
