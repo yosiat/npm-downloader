@@ -24,7 +24,11 @@ func packageWorker(repository NpmRepository,
 
 	for item := range jobs {
 		// Fetch the package from remote
-		pkg := repository.FetchPackage(item.Id)
+		pkg, err := repository.FetchPackage(item.Id)
+		if err != nil {
+			results <- PackageStatus{Id: item.Id, Error: err, IsDownloaded: true, Package: models.Package{Id: item.Id, Revision: item.Revision}}
+			return
+		}
 
 		downloadedInfo := downloadedPackages[item.Id]
 		pkgCommitStatus := models.PackageCommit{
