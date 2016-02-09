@@ -10,7 +10,8 @@ import (
 
 type Changes struct {
 	Results []struct {
-		Id string `json:"id"`
+		Id      string `json:"id"`
+		Deleted bool   `json:"deleted"`
 
 		Changes []struct {
 			Revision string `json:"rev"`
@@ -31,6 +32,10 @@ func ReadChanges(baseDir string) map[string]models.PackageCommit {
 
 	packageCommitById := make(map[string]models.PackageCommit)
 	for _, change := range changes.Results {
+		if change.Deleted {
+			continue
+		}
+
 		packageCommitById[change.Id] = models.PackageCommit{
 			Id:       change.Id,
 			Revision: change.Changes[0].Revision,
