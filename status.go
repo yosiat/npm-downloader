@@ -111,8 +111,6 @@ func (repo *CommitsRepository) AllSucessfullPackages() map[string]models.Package
 				return err
 			}
 
-			// TODO: Backward compat :)
-			pkgCommitStatus.Id = string(packageId)
 			packageCommitById[pkgCommitStatus.Id] = pkgCommitStatus
 			return nil
 		})

@@ -45,7 +45,6 @@ func packageWorker(repository NpmRepository,
 		// We have changes :)
 		versionsToDownload := downloadedInfo.VersionsToDownload(pkgCommitStatus)
 
-		// TODO: change detection :)
 		downloadErr := pkg.Download(downloadDirectory, versionsToDownload)
 
 		if downloadErr != nil {
@@ -57,8 +56,6 @@ func packageWorker(repository NpmRepository,
 
 	}
 }
-
-// TODO: Debug why there is no revision?
 
 func main() {
 	// TODO: download diffs and then down them all
