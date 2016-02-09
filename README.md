@@ -1,4 +1,4 @@
-# npm-dowloader
+# npm-downloader
 
 Downloads all of npm to your computer, for offline networks.
 
