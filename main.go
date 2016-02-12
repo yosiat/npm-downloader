@@ -69,17 +69,18 @@ func main() {
 
 	workersCount := 64
 	jobsCount := 50 * 1000
+	jobsCount := len(changes) - len(downloadedPackages)
 	results := make(chan PackageStatus, jobsCount)
 	jobs := make(chan models.PackageCommit, jobsCount)
 
 	// Initialize wokrers
-	fmt.Println("Starting workers")
+	fmt.Printf("Starting %v workers\n", workersCount)
 	for w := 1; w <= workersCount; w++ {
 		go packageWorker(skim, downloadedPackages, jobs, results)
 	}
 
 	// Submit jobs
-	fmt.Println("Submitting jobs")
+	fmt.Printf("Submitting %v jobs\n", jobsCount)
 	for _, change := range models.Take(changes, jobsCount) {
 		jobs <- change
 	}
