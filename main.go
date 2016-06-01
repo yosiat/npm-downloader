@@ -15,6 +15,23 @@ type PackageStatus struct {
 	Package      models.Package
 }
 
+func FindPackagesToDownload(downloadedPackages, changes map[string]models.PackageCommit) map[string]models.PackageCommit {
+	result := make(map[string]models.PackageCommit)
+
+	for pkgId, change := range changes {
+		downloadedPackage, exists := downloadedPackages[pkgId]
+		if !exists {
+			result[pkgId] = change
+		}
+
+		if exists && downloadedPackage.Revision != change.Revision {
+			result[pkgId] = change
+		}
+	}
+
+	return result
+}
+
 // TODO: why we can't use Repository interface in here
 func packageWorker(repository NpmRepository,
 	downloadedPackages map[string]models.PackageCommit,
@@ -39,12 +56,12 @@ func packageWorker(repository NpmRepository,
 
 		// We have changes :)
 		versionsToDownload := downloadedInfo.VersionsToDownload(pkgCommitStatus)
+		fmt.Printf("Versions to download for react: %+v", versionsToDownload)
 
 		downloadErr := pkg.Download(downloadDirectory, versionsToDownload)
 
 		if downloadErr != nil {
 			results <- PackageStatus{Error: downloadErr, IsDownloaded: true, Package: pkg}
-			return
 		} else {
 			results <- PackageStatus{Error: nil, IsDownloaded: true, Package: pkg}
 		}
@@ -52,8 +69,8 @@ func packageWorker(repository NpmRepository,
 	}
 }
 
+// TODO: Check what happens if we have error..
 func main() {
-	// TODO: download diffs and then down them all
 	fmt.Println("npm-downloader (v0.1)")
 	skim := NpmRepository{baseUrl: "https://skimdb.npmjs.com/registry"}
 
@@ -66,10 +83,10 @@ func main() {
 	fmt.Println("Reading changes from file _changes and from the db")
 	changes := ReadChanges(baseDir)
 	downloadedPackages := commitsRepo.AllSucessfullPackages()
+	packagesToDownload := FindPackagesToDownload(downloadedPackages, changes)
 
-	workersCount := 64
-	jobsCount := 50 * 1000
-	jobsCount := len(changes) - len(downloadedPackages)
+	workersCount := 6
+	jobsCount := len(packagesToDownload)
 	results := make(chan PackageStatus, jobsCount)
 	jobs := make(chan models.PackageCommit, jobsCount)
 
@@ -81,7 +98,7 @@ func main() {
 
 	// Submit jobs
 	fmt.Printf("Submitting %v jobs\n", jobsCount)
-	for _, change := range models.Take(changes, jobsCount) {
+	for _, change := range packagesToDownload {
 		jobs <- change
 	}
 
