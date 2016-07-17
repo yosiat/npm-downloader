@@ -46,7 +46,7 @@ func CreateCommitsRepository(baseDir string) (CommitsRepository, error) {
 	return CommitsRepository{Db: db}, nil
 }
 
-// TODO: Return error in Sucess and in Error
+// Sucess - add success entry to the db
 func (repo *CommitsRepository) Sucess(pkg models.Package) {
 	repo.Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("Success"))
@@ -65,14 +65,14 @@ func (repo *CommitsRepository) Sucess(pkg models.Package) {
 	})
 }
 
-func (repo *CommitsRepository) Error(pkgId string, err error) {
+func (repo *CommitsRepository) Error(pkgID string, err error) {
 	repo.Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("Error"))
-		err := b.Put([]byte(pkgId), []byte(err.Error()))
-		return err
+		return b.Put([]byte(pkgID), []byte(err.Error()))
 	})
 }
 
+// ErrorsCount - returns how much errors we have
 func (repo *CommitsRepository) ErrorsCount() int {
 
 	errorsCount := 0
@@ -90,9 +90,9 @@ func (repo *CommitsRepository) ErrorsCount() int {
 	return errorsCount
 }
 
+// AllSucessfullPackages - returns all succesful packages download
 func (repo *CommitsRepository) AllSucessfullPackages() map[string]models.PackageCommit {
-
-	packageCommitById := make(map[string]models.PackageCommit)
+	packageCommitByID := make(map[string]models.PackageCommit)
 
 	repo.Db.View(func(tx *bolt.Tx) error {
 		successBucket := tx.Bucket([]byte("Success"))
@@ -106,14 +106,14 @@ func (repo *CommitsRepository) AllSucessfullPackages() map[string]models.Package
 				return err
 			}
 
-			packageCommitById[pkgCommitStatus.Id] = pkgCommitStatus
+			packageCommitByID[pkgCommitStatus.Id] = pkgCommitStatus
 			return nil
 		})
 
 		return nil
 	})
 
-	return packageCommitById
+	return packageCommitByID
 }
 
 func (repo *CommitsRepository) Close() {

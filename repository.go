@@ -22,13 +22,13 @@ func (repository *NpmRepository) FetchPackage(packageID string) (models.Package,
 	packageURL := fmt.Sprintf("%s/%s", repository.baseURL, packageID)
 
 	response, err := http.Get(packageURL)
-	defer response.Body.Close()
 	if err != nil {
 		packageLogger.Errorf("Failed to fetch package from %s, error: %v", packageURL, err)
 		return models.Package{}, fmt.Errorf("Failed to fetch package %s:\n%v", packageID, err)
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
 	if err != nil {
 		return models.Package{}, fmt.Errorf("Failed to read package body %s:\n%v", packageID, err)
 	}
