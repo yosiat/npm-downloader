@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/yosiat/npm-downloader/models"
 )
 
@@ -15,24 +16,34 @@ type PackageStatus struct {
 	Package      models.Package
 }
 
-func FindPackagesToDownload(downloadedPackages, changes map[string]models.PackageCommit) map[string]models.PackageCommit {
-	result := make(map[string]models.PackageCommit)
+// findPackagesToDownload given a list of already downloaded packages and the changes feed
+// we return a list of packages to download
+func findPackagesToDownload(downloadedPackages, changes map[string]models.PackageCommit) []models.PackageCommit {
+	var packagesToDownload []models.PackageCommit
 
-	for pkgId, change := range changes {
-		downloadedPackage, exists := downloadedPackages[pkgId]
-		if !exists {
-			result[pkgId] = change
+	for pkgID, change := range changes {
+		if pkgID != "react" {
+			continue
 		}
 
-		if exists && downloadedPackage.Revision != change.Revision {
-			result[pkgId] = change
+		var downloadedPackage models.PackageCommit
+		var exists bool
+
+		// If didn't already downloaded this package
+		if downloadedPackage, exists = downloadedPackages[pkgID]; !exists {
+			packagesToDownload = append(packagesToDownload, change)
+			continue
+		}
+
+		// If there is change in revision
+		if downloadedPackage.Revision != change.Revision {
+			packagesToDownload = append(packagesToDownload, change)
 		}
 	}
 
-	return result
+	return packagesToDownload
 }
 
-// TODO: why we can't use Repository interface in here
 func packageWorker(repository NpmRepository,
 	downloadedPackages map[string]models.PackageCommit,
 	jobs <-chan models.PackageCommit,
@@ -56,8 +67,6 @@ func packageWorker(repository NpmRepository,
 
 		// We have changes :)
 		versionsToDownload := downloadedInfo.VersionsToDownload(pkgCommitStatus)
-		fmt.Printf("Versions to download for react: %+v", versionsToDownload)
-
 		downloadErr := pkg.Download(downloadDirectory, versionsToDownload)
 
 		if downloadErr != nil {
@@ -69,10 +78,11 @@ func packageWorker(repository NpmRepository,
 	}
 }
 
-// TODO: Check what happens if we have error..
 func main() {
+	log.SetFormatter(&log.TextFormatter{})
+
 	fmt.Println("npm-downloader (v0.1)")
-	skim := NpmRepository{baseUrl: "https://skimdb.npmjs.com/registry"}
+	skim := NpmRepository{baseURL: "https://skimdb.npmjs.com/registry"}
 
 	commitsRepo, err := CreateCommitsRepository(baseDir)
 	if err != nil {
@@ -83,7 +93,7 @@ func main() {
 	fmt.Println("Reading changes from file _changes and from the db")
 	changes := ReadChanges(baseDir)
 	downloadedPackages := commitsRepo.AllSucessfullPackages()
-	packagesToDownload := FindPackagesToDownload(downloadedPackages, changes)
+	packagesToDownload := findPackagesToDownload(downloadedPackages, changes)
 
 	workersCount := 6
 	jobsCount := len(packagesToDownload)
@@ -112,7 +122,7 @@ func main() {
 		if status.Error == nil {
 			statusText = "Downloaded successfuly"
 		} else {
-			statusText = "Downloaded with error"
+			statusText = fmt.Sprintf("Downloaded with error: %s", status.Error)
 		}
 
 		if !status.IsDownloaded {
